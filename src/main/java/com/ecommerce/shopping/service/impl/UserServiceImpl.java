@@ -4,14 +4,18 @@ import com.ecommerce.shopping.entity.Customer;
 import com.ecommerce.shopping.entity.Seller;
 import com.ecommerce.shopping.entity.User;
 import com.ecommerce.shopping.enums.UserRole;
+import com.ecommerce.shopping.exception.InvalidOtpException;
+import com.ecommerce.shopping.exception.OtpExpiredException;
 import com.ecommerce.shopping.exception.UserAlreadyExistException;
 import com.ecommerce.shopping.exception.UserExpiredException;
 import com.ecommerce.shopping.exception.UserNotExistException;
+import com.ecommerce.shopping.jwt.JwtService;
 import com.ecommerce.shopping.mailservice.MailService;
 import com.ecommerce.shopping.mailservice.MessageData;
 import com.ecommerce.shopping.repository.CustomerRepository;
 import com.ecommerce.shopping.repository.SellerRepository;
 import com.ecommerce.shopping.repository.UserRepository;
+import com.ecommerce.shopping.requestdto.AuthRequest;
 import com.ecommerce.shopping.requestdto.OtpVerificationRequest;
 import com.ecommerce.shopping.requestdto.UserRequest;
 import com.ecommerce.shopping.responsedto.UserResponse;
@@ -26,6 +30,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -51,68 +60,73 @@ public class UserServiceImpl implements UserService {
 
 	private final MailService mailService;
 	
-	private final MailSender mailSender;
-
+	private final AuthenticationManager authenticationManager;
 	
+	private final JwtService jwtService;
 
-	@Override
-	public ResponseEntity<ResponseStructure<UserResponse>> addUser(UserRequest userRequest, UserRole userRole) {
-		boolean emailExist = userRepository.existsByEmail(userRequest.getEmail());
-		if (emailExist)
-			throw new UserAlreadyExistException("Email : " + userRequest.getEmail() + ", is already exist");
-		else {
-			if (userRole.equals(UserRole.CUSTOMER)) {
-				Customer customer = (Customer) userMapper.mapUserRequestToUser(userRequest, new Customer());
-				customer.setUserRole(userRole);
-
-				customer = customerRepository.save(customer);
-				return ResponseEntity.status(HttpStatus.CREATED).body(new ResponseStructure<UserResponse>()
-						.setStatus(HttpStatus.CREATED.value())
-						.setMessage("Customer Created")
-						.setData(userMapper.mapUserToUserResponse(customer)));
-			} else {
-				Seller seller = (Seller) userMapper.mapUserRequestToUser(userRequest, new Seller());
-				seller.setUserRole(userRole);
-				seller = sellerRepository.save(seller);
-
-				return ResponseEntity.status(HttpStatus.CREATED).body(new ResponseStructure<UserResponse>()
-						.setStatus(HttpStatus.CREATED.value())
-						.setMessage("Seller Created")
-						.setData(userMapper.mapUserToUserResponse(seller)));
-			}
-		}
-	}
 
 	@Override
 	public ResponseEntity<ResponseStructure<UserResponse>> saveUser(UserRequest userRequest, UserRole userRole) {
-		User user = null;
-		switch (userRole) {
-		case SELLER -> user = new Seller();
-		case CUSTOMER -> user = new Customer();
-		}
-		if (user != null) {
-			user = userMapper.mapUserRequestToUser(userRequest, user);
-			userCache.put(userRequest.getEmail(), user);
-			int otp = random.nextInt(100000, 999999);
-
-			MessageData messageData = new MessageData();
-			messageData.setTo(user.getEmail());
-			messageData.setSubject(user.getUsername());
-			messageData.setSentDate(new Date());
-			messageData.setText("otp: "+otp);
-			try {
-				mailService.sendMail(messageData);
-			}catch (Exception e) {
-				e.printStackTrace();
+		boolean emailExist = userRepository.existsByEmail(userRequest.getEmail());
+		if(emailExist) {
+			throw new UserAlreadyExistException("Email: "+userRequest.getEmail()+" already existed!!");
+		}else {
+			User user = null;
+			switch (userRole) {
+			case SELLER -> user = new Seller();
+			case CUSTOMER -> user = new Customer();
 			}
-			System.out.println(otp);
+			if (user != null) {
+				user = userMapper.mapUserRequestToUser(userRequest, user);
+				user.setUserRole(userRole);
+				userCache.put(userRequest.getEmail(), user);
+				int otp = random.nextInt(100000, 999999);
+				otpCache.put(userRequest.getEmail(), otp + "");
 
-			otpCache.put(userRequest.getEmail(), otp + "");
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body(new ResponseStructure<UserResponse>()
-					.setStatus(HttpStatus.ACCEPTED.value())
-					.setMessage("Verify otp")
+				 mailSend(user.getEmail(), "OTP verification for EcommerceShoppingApp", "<h3>Welcome to Ecommerce Shopping Applicationa</h3></br><h4>Otp : " + otp + "</h4>");
+				
+				
+				
+				return ResponseEntity.status(HttpStatus.ACCEPTED).body(new ResponseStructure<UserResponse>()
+						.setStatus(HttpStatus.ACCEPTED.value())
+						.setMessage("otp sent!!!")
+						.setData(userMapper.mapUserToUserResponse(user)));
+			} else throw new UserAlreadyExistException("Bad Request");
+		}
+	
+	}
+
+	@Override
+	public ResponseEntity<ResponseStructure<UserResponse>> findUser(Long userId) {
+		return userRepository.findById(userId).map(user -> {
+			return ResponseEntity.status(HttpStatus.FOUND).body(new ResponseStructure<UserResponse>()
+					.setStatus(HttpStatus.FOUND.value())
+					.setMessage("User Founded")
 					.setData(userMapper.mapUserToUserResponse(user)));
-		} else throw new UserAlreadyExistException("Bad Request");
+		}).orElseThrow(() -> new UserNotExistException("UserId : " + userId + ", is not exist"));
+	}
+
+	@Override
+	public ResponseEntity<ResponseStructure<List<UserResponse>>> findUsers() {
+		List<UserResponse> userResponseList = userRepository.findAll()
+				.stream()
+				.map(userMapper::mapUserToUserResponse)
+				.toList();
+		return ResponseEntity.status(HttpStatus.FOUND).body(new ResponseStructure<List<UserResponse>>()
+				.setMessage("Users are Founded")
+				.setData(userResponseList));
+	}
+
+	@Override
+	public ResponseEntity<ResponseStructure<UserResponse>> updateUser(UserRequest userRequest, Long userId) {
+		return userRepository.findById(userId).map(user -> {
+			user = userMapper.mapUserRequestToUser(userRequest, user);
+			user = userRepository.save(user);
+			return ResponseEntity.status(HttpStatus.OK).body(new ResponseStructure<UserResponse>()
+					.setStatus(HttpStatus.OK.value())
+					.setMessage("User Updated")
+					.setData(userMapper.mapUserToUserResponse(user)));
+		}).orElseThrow(() -> new UserNotExistException("UserId : " + userId + ", is not exist"));
 	}
 
 	@Override
@@ -121,83 +135,67 @@ public class UserServiceImpl implements UserService {
 		String existingotp = otpCache.getIfPresent(otpVerificationRequest.getEmail());
 		String requestedotp=otpVerificationRequest.getOtp();
 		ResponseStructure<UserResponse> responseStructure = new ResponseStructure<>();
-		if (user == null) {
-		    throw new UserExpiredException("User has expired");
-		}
-
-		if (existingotp != null && existingotp.equals(requestedotp)) {
-		   Long userId = user.getUserId();
-		    UserResponse userResponse = new UserResponse(userId, user.getEmail());
-		    
-//		    user.setUsername(user.getUsername());
-//		    user.setEmail(user.getEmail());
-//		    user.setUserRole(user.getUserRole());
-		    
-	        
-
-		    // Send confirmation email
-		    sendConfirmationEmail(user.getEmail());
-		    
-		    responseStructure = ResponseStructure.<UserResponse>builder()
-		            .status(200)
-		            .message("OTP verified successfully")
-		            .data(userResponse)
-		            .build();
-
-		    return new ResponseEntity<>(responseStructure, HttpStatus.OK);
-		} else {
-		    responseStructure = ResponseStructure.<UserResponse>builder()
-		            .status(400)
-		            .message("Invalid OTP")
-		            .data(null)
-		            .build();
-
-		    return new ResponseEntity<>(responseStructure, HttpStatus.BAD_REQUEST);
-		}
-	}
-		private void sendConfirmationEmail(String email) {
-			// Create a simple mail message
-						SimpleMailMessage mailMessage = new SimpleMailMessage();
-						mailMessage.setTo(email);
-						mailMessage.setSubject("Account Verification Successful");
-						mailMessage.setText("Dear " + email + ",\n\nYour account has been successfully verified.\n\nBest regards,\n[Your App Name]");
-					
-						// Send the mail using a mail sender
-						mailSender.send(mailMessage);		
-	}
-
 		
+		if (user == null) 
+			throw new UserExpiredException("User has expired");
+		else if (existingotp == null && existingotp.equals(requestedotp)) 
+			throw new OtpExpiredException("Otp is expired");
+		else if(!existingotp.equals(requestedotp)) 
+			throw new  InvalidOtpException("Invalid otp");
+		else if(existingotp.equals(requestedotp)) {
 
-@Override
-public ResponseEntity<ResponseStructure<UserResponse>> findUser(Long userId) {
-	return userRepository.findById(userId).map(user -> {
-		return ResponseEntity.status(HttpStatus.FOUND).body(new ResponseStructure<UserResponse>()
-				.setStatus(HttpStatus.FOUND.value())
-				.setMessage("User Founded")
-				.setData(userMapper.mapUserToUserResponse(user)));
-	}).orElseThrow(() -> new UserNotExistException("UserId : " + userId + ", is not exist"));
+			
+			String userGen = user.getEmail().split("@")[0];
+			int temp = 0;
+			while (userRepository.existsByEmail(userGen)) {
+			    userGen += temp;
+			    temp++;
+			}
+			user.setUsername(userGen);
+
+			user = userRepository.save(user);
+			// Send mail for confirmation
+			mailSend(user.getEmail(), "Email Verification done", "Your account is create in EcommerceShoppingApp</br> Your username is : "+userGen);
+
+			return ResponseEntity.status(HttpStatus.CREATED).body(new ResponseStructure<UserResponse>()
+					.setStatus(HttpStatus.CREATED.value())
+					.setMessage(user.getUserRole() + " Created")
+					.setData(userMapper.mapUserToUserResponse(user)));
+		} else {
+			throw new OtpExpiredException("Otp is expired");
+		}
+	}
+
+	private void mailSend(String email, String subject, String text) {
+		// TODO Auto-generated method stub
+		 MessageData messageData = new MessageData();
+	        messageData.setTo(email);
+	        messageData.setSubject(subject);
+	        messageData.setText(text);
+	        messageData.setSentDate(new Date());
+	        try {
+	            mailService.sendMail(messageData);
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	}
+
+	@Override
+	public String login(AuthRequest authRequest) {
+	
+		
+            Authentication authenticate = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
+            if (authenticate.isAuthenticated())
+                return jwtService.createJwtToken(authRequest.getUsername(), 1000000L);
+            else
+                throw new BadCredentialsException("Invalid Credentials");
+       
+	}
+	
 }
 
-@Override
-public ResponseEntity<ResponseStructure<List<UserResponse>>> findUsers() {
-	List<UserResponse> userResponseList = userRepository.findAll()
-			.stream()
-			.map(userMapper::mapUserToUserResponse)
-			.toList();
-	return ResponseEntity.status(HttpStatus.FOUND).body(new ResponseStructure<List<UserResponse>>()
-			.setMessage("Users are Founded")
-			.setData(userResponseList));
-}
 
-@Override
-public ResponseEntity<ResponseStructure<UserResponse>> updateUser(UserRequest userRequest, Long userId) {
-	return userRepository.findById(userId).map(user -> {
-		user = userMapper.mapUserRequestToUser(userRequest, user);
-		user = userRepository.save(user);
-		return ResponseEntity.status(HttpStatus.OK).body(new ResponseStructure<UserResponse>()
-				.setStatus(HttpStatus.OK.value())
-				.setMessage("User Updated")
-				.setData(userMapper.mapUserToUserResponse(user)));
-	}).orElseThrow(() -> new UserNotExistException("UserId : " + userId + ", is not exist"));
-}
-}
+
+
+

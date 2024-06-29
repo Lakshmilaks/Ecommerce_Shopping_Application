@@ -4,14 +4,21 @@ import com.ecommerce.shopping.entity.User;
 import com.ecommerce.shopping.requestdto.UserRequest;
 import com.ecommerce.shopping.responsedto.UserResponse;
 
+import lombok.AllArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
 public class UserMapper {
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+	
     public User mapUserRequestToUser(UserRequest userRequest, User user){
-        user.setUsername(userRequest.getUsername());
+//        user.setUsername(userRequest.getUsername());
         user.setEmail(userRequest.getEmail());
-        user.setPassword(userRequest.getPassword());
+        user.setPassword(passwordEncoder.encode(userRequest.getPassword()));
         return  user;
     }
 

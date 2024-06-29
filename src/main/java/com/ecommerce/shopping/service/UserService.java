@@ -1,6 +1,7 @@
 package com.ecommerce.shopping.service;
 
 import com.ecommerce.shopping.enums.UserRole;
+import com.ecommerce.shopping.requestdto.AuthRequest;
 import com.ecommerce.shopping.requestdto.OtpVerificationRequest;
 import com.ecommerce.shopping.requestdto.UserRequest;
 import com.ecommerce.shopping.responsedto.UserResponse;
@@ -10,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 public interface UserService {
-    ResponseEntity<ResponseStructure<UserResponse>> addUser(UserRequest userRequest, UserRole userRole);
+//    ResponseEntity<ResponseStructure<UserResponse>> addUser(UserRequest userRequest, UserRole userRole);
 
     ResponseEntity<ResponseStructure<UserResponse>> updateUser(UserRequest userRequest, Long userId);
 
@@ -21,5 +22,10 @@ public interface UserService {
 	ResponseEntity<ResponseStructure<UserResponse>> verifyUser(OtpVerificationRequest otpVerificationRequest);
 
 	ResponseEntity<ResponseStructure<UserResponse>> saveUser(UserRequest userRequest, UserRole seller);
+
+//	String login(String username, long l);
+
+	String login(AuthRequest authRequest);
+
 
 }
