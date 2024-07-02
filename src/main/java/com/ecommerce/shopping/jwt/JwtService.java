@@ -4,23 +4,28 @@ import java.security.Key;
 import java.util.Date;
 import java.util.Map;
 
-import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.ecommerce.shopping.enums.UserRole;
+
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwt;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import lombok.AllArgsConstructor;
+
 @Service
 public class JwtService {
 
-	private String secret="6aQXwXHJPvuXkJfx1Ok9zJpOPToGcj+MideCGNe8nOsNefsOYu8uliPBEAZ9L++TK5e7/5Hf4XR8\r\nrn9GvRW4XA==";
+	@Value("${application.jwt.secrete}")
+	private String secret;
 
-	public String createJwtToken(String username,long expirationTimeInMillies){
-		return Jwts.builder().setClaims(Map.of())
+	private static final String ROLE="role";
+
+	public String createJwtToken(String username,UserRole role, long expirationTimeInMillies){
+		return Jwts.builder()
+				.setClaims(Map.of(ROLE,"role"))
 				.setSubject(username)
 				.setIssuedAt(new Date(System.currentTimeMillis()))
 				.setExpiration(new Date(System.currentTimeMillis()+expirationTimeInMillies))
@@ -47,9 +52,18 @@ public class JwtService {
 	public Date extractExpirationDate(String token) {
 		return parseJwt(token).getExpiration();
 	}
-	
+
 	public Date extractIssuedDate(String token) {
 		return parseJwt(token).getIssuedAt();
 	}
+
+	public UserRole extractUserRole(String token)
+	{
+		String role= parseJwt(token).get("role", String.class);
+		return UserRole.valueOf(role);
+	}
+
+
+
 
 }

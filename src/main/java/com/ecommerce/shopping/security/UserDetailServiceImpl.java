@@ -19,7 +19,7 @@ public class UserDetailServiceImpl implements UserDetailsService{
 	
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		return userRepository.findByEmail(username).map(UserDetailService::new)
+		return userRepository.findByUsername(username).map(UserDetailService::new)
 				.orElseThrow(() -> new UsernameNotFoundException("Invalid Credencial"));
 	}
 

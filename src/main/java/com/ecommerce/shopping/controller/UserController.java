@@ -5,6 +5,7 @@ import com.ecommerce.shopping.jwt.JwtService;
 import com.ecommerce.shopping.requestdto.AuthRequest;
 import com.ecommerce.shopping.requestdto.OtpVerificationRequest;
 import com.ecommerce.shopping.requestdto.UserRequest;
+import com.ecommerce.shopping.responsedto.AuthResponse;
 import com.ecommerce.shopping.responsedto.UserResponse;
 import com.ecommerce.shopping.service.UserService;
 import com.ecommerce.shopping.utility.ResponseStructure;
@@ -23,11 +24,12 @@ import java.util.List;
 @AllArgsConstructor
 public class UserController {
     
-    private UserService userService;
+	
+    private final UserService userService;
 
     
     @PostMapping("/login")
-	public String login(@RequestBody AuthRequest authRequest)
+	public ResponseEntity<ResponseStructure<AuthResponse>> login(@RequestBody AuthRequest authRequest)
 	{
 		return userService.login(authRequest);
 	}

@@ -5,8 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Getter
 @Setter
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -20,6 +20,8 @@ public class User {
     private String password;
     @Enumerated(EnumType.STRING)
     private UserRole userRole;
-    private boolean isEmailVerified=true;
-    private boolean isDeleted=true;
+    private boolean isEmailVerified;
+    private boolean isDeleted;
+    private UserRole role;
+    
 }
