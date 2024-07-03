@@ -1,5 +1,9 @@
 package com.ecommerce.shopping.utility;
 
+import com.ecommerce.shopping.exception.InvalidJWTException;
+import com.ecommerce.shopping.exception.InvalidOtpException;
+import com.ecommerce.shopping.exception.JwtExpiredExcepton;
+import com.ecommerce.shopping.exception.OtpExpiredException;
 import com.ecommerce.shopping.exception.UserAlreadyExistException;
 import com.ecommerce.shopping.exception.UserNotExistException;
 import org.springframework.http.HttpStatus;
@@ -23,10 +27,29 @@ public class ApplicationExceptionHandler {
     }
 
     @ExceptionHandler
+    public ResponseEntity<ErrorStructure<String>> handleInvalidToken(InvalidJWTException ex) {
+        return errorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), "Invalid Token");
+    }
+    
+    @ExceptionHandler
+    public ResponseEntity<ErrorStructure<String>> handleJwtExpiredExcepton(JwtExpiredExcepton ex){
+    	return errorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), "expired!!");
+    }
+    @ExceptionHandler
+    public ResponseEntity<ErrorStructure<String>> handleInvalidOtpException(InvalidOtpException ex) {
+    	return errorResponse(HttpStatus.BAD_REQUEST,ex.getMessage(), "Invalid otp");
+    }
+    
+    @ExceptionHandler
+    public ResponseEntity<ErrorStructure<String>> handleOtpExpiredException(OtpExpiredException ex) {
+    	return errorResponse(HttpStatus.BAD_REQUEST,ex.getMessage(), "otp expired");
+    }
+    
+    @ExceptionHandler
     public ResponseEntity<ErrorStructure<String>> handleUserAlreadyExist(UserAlreadyExistException ex) {
         return errorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), "Already User is exist");
     }
-
+    
     @ExceptionHandler
     public ResponseEntity<ErrorStructure<String>>  handleUserNotExist(UserNotExistException ex){
         return errorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), "User not exist");
