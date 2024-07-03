@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.ecommerce.shopping.enums.UserRole;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -23,15 +24,15 @@ public class JwtService {
 
 	private static final String ROLE="role";
 
-	public String createJwtToken(String username,UserRole role, long expirationTimeInMillies){
-		return Jwts.builder()
-				.setClaims(Map.of(ROLE,"role"))
-				.setSubject(username)
-				.setIssuedAt(new Date(System.currentTimeMillis()))
-				.setExpiration(new Date(System.currentTimeMillis()+expirationTimeInMillies))
-				.signWith(getSignatureKey(), SignatureAlgorithm.HS512)
-				.compact();
-	}
+	 public String createJwtToken(String username, String role, long expirationTimeInMillis) {
+	        return Jwts.builder()
+	                .setClaims(Map.of(ROLE, role))
+	                .setSubject(username)
+	                .setIssuedAt(new Date(System.currentTimeMillis()))
+	                .setExpiration(new Date(System.currentTimeMillis() + expirationTimeInMillis))
+	                .signWith(getSignatureKey(), SignatureAlgorithm.HS512)
+	                .compact();
+	    }
 
 	private Key getSignatureKey() {
 		return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
@@ -57,11 +58,13 @@ public class JwtService {
 		return parseJwt(token).getIssuedAt();
 	}
 
-	public UserRole extractUserRole(String token)
+	public String extractUserRole(String token)
 	{
-		String role= parseJwt(token).get("role", String.class);
-		return UserRole.valueOf(role);
+		return parseJwt(token).get("userRole", String.class);
 	}
+
+	
+	
 
 
 

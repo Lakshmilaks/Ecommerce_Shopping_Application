@@ -22,7 +22,7 @@ public class UserDetailService implements UserDetails{
 	    public UserDetailService(User user) {
 	        username = user.getUsername();
 	        password = user.getPassword();
-	        grantedAuthorities = List.of(new SimpleGrantedAuthority(user.getUserRole().name()));
+	        grantedAuthorities = List.of(new SimpleGrantedAuthority(user.getRole().name()));
 	    }
 
 	    @Override

@@ -54,12 +54,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 	            try {
 	                Date expireDate = jwtService.extractExpirationDate(at);
 	                String username = jwtService.extractUserName(at);
-	                UserRole userRole = jwtService.extractUserRole(at);
+	                String userRole = jwtService.extractUserRole(at);
 
 	                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-	                    UsernamePasswordAuthenticationToken upat = new UsernamePasswordAuthenticationToken(username, null, List.of(new SimpleGrantedAuthority(userRole.name())));
+	                    UsernamePasswordAuthenticationToken upat = new UsernamePasswordAuthenticationToken
+	                    		(username, null, List.of(new SimpleGrantedAuthority(userRole)));
 	                    upat.setDetails(new WebAuthenticationDetails(request));
-//	              we store inside security context holder
 	                    SecurityContextHolder.getContext().setAuthentication(upat);
 	                }
 	            } catch (ExpiredJwtException e) {

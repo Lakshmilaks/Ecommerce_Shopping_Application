@@ -99,9 +99,9 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public ResponseEntity<ResponseStructure<UserResponse>> saveUser(UserRequest userRequest, UserRole userRole) {
 		boolean emailExist = userRepository.existsByEmail(userRequest.getEmail());
-		if(emailExist) {
-			throw new UserAlreadyExistException("Email: "+userRequest.getEmail()+" already existed!!");
-		}else {
+		if (emailExist)
+			throw new UserAlreadyExistException("Email : " + userRequest.getEmail() + ", is already exist");
+		else {
 			User user = null;
 			switch (userRole) {
 			case SELLER -> user = new Seller();
@@ -109,32 +109,42 @@ public class UserServiceImpl implements UserService {
 			}
 			if (user != null) {
 				user = userMapper.mapUserRequestToUser(userRequest, user);
-				user.setUserRole(userRole);
+				user.setRole(userRole);
 				userCache.put(userRequest.getEmail(), user);
 				int otp = random.nextInt(100000, 999999);
 				otpCache.put(userRequest.getEmail(), otp + "");
 
-				mailSend(user.getEmail(), "OTP verification for EcommerceShoppingApp", "Otp : " + otp + "");
-
-
+				//	                Send otp in mail
+				mailSend(user.getEmail(), "OTP verification for EcommerceShoppingApp", "Otp : " + otp );
 
 				return ResponseEntity.status(HttpStatus.ACCEPTED).body(new ResponseStructure<UserResponse>()
 						.setStatus(HttpStatus.ACCEPTED.value())
-						.setMessage("otp sent!!!")
+						.setMessage("Otp sended")
 						.setData(userMapper.mapUserToUserResponse(user)));
 			} else throw new UserAlreadyExistException("Bad Request");
 		}
 
 	}
 
+	private void mailSend(String email, String subject, String text) {
+		MessageData messageData = new MessageData();
+		messageData.setTo(email);
+		messageData.setSubject(subject);
+		messageData.setText(text);
+		messageData.setSentDate(new Date());
+		try {
+			mailService.sendMail(messageData);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
 	@Override
 	public ResponseEntity<ResponseStructure<UserResponse>> verifyUser(OtpVerificationRequest otpVerificationRequest) {
+
 		User user = userCache.getIfPresent(otpVerificationRequest.getEmail());
 		String existingotp = otpCache.getIfPresent(otpVerificationRequest.getEmail());
 		String requestedotp=otpVerificationRequest.getOtp();
-		ResponseStructure<UserResponse> responseStructure = new ResponseStructure<>();
-
 		if (user == null) 
 			throw new UserExpiredException("User has expired");
 		else if (existingotp == null && existingotp.equals(requestedotp)) 
@@ -142,7 +152,6 @@ public class UserServiceImpl implements UserService {
 		else if(!existingotp.equals(requestedotp)) 
 			throw new  InvalidOtpException("Invalid otp");
 		else if(existingotp.equals(requestedotp)) {
-
 
 			String userGen = user.getEmail().split("@")[0];
 			int temp = 0;
@@ -158,26 +167,14 @@ public class UserServiceImpl implements UserService {
 
 			return ResponseEntity.status(HttpStatus.CREATED).body(new ResponseStructure<UserResponse>()
 					.setStatus(HttpStatus.CREATED.value())
-					.setMessage(user.getUserRole() + " Created")
+					.setMessage(user.getRole() + " Created")
 					.setData(userMapper.mapUserToUserResponse(user)));
 		} else {
 			throw new OtpExpiredException("Otp is expired");
 		}
 	}
 
-	private void mailSend(String email, String subject, String text) {
-		// TODO Auto-generated method stub
-		MessageData messageData = new MessageData();
-		messageData.setTo(email);
-		messageData.setSubject(subject);
-		messageData.setText(text);
-		messageData.setSentDate(new Date());
-		try {
-			mailService.sendMail(messageData);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+
 
 	@Override
 	public ResponseEntity<ResponseStructure<UserResponse>> findUser(Long userId) {
@@ -214,73 +211,93 @@ public class UserServiceImpl implements UserService {
 
 
 	@Override
-	public ResponseEntity<ResponseStructure<AuthResponse>> login(AuthRequest authRequest) {
+	public ResponseEntity<ResponseStructure<AuthResponse>> login(AuthRequest authRequest, String accessToken, String refreshToken) {
+		System.out.println("---------------------------------------------");
+		System.out.println(refreshToken);
+		System.out.println(accessToken);
 		try {
-            Authentication authenticate = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
-            if (authenticate.isAuthenticated()) {
-             return    userRepository.findByUsername(authRequest.getUsername()).map(existUser -> {
-                    HttpHeaders httpHeaders = new HttpHeaders();
-                    grantAccessToken(httpHeaders, existUser);
-                    grantRefreshToken(httpHeaders, existUser);
+			Authentication authenticate = authenticationManager.authenticate(
+					new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
+			if (authenticate.isAuthenticated()) {
+				return   userRepository.findByUsername(authRequest.getUsername()).map(existUser -> {
+					HttpHeaders httpHeaders = new HttpHeaders();
+					grantAccessToken(httpHeaders, existUser);
+					grantRefreshToken(httpHeaders, existUser);
 
-                  return   ResponseEntity.status(HttpStatus.OK)
-                            .headers(httpHeaders)
-                            .body(new ResponseStructure<AuthResponse>()
-                                    .setStatus(HttpStatus.OK.value())
-                                    .setMessage("User Verified")
-                                    .setData(AuthResponse.builder()
-                                            .userId(existUser.getUserId())
-                                            .username(existUser.getUsername())
-                                            .accessExpiration(accessExpirySeconds)
-                                            .refreshExpiration(refreshExpirySeconds)
-                                            .build()));
-                }).orElseThrow(() -> new UserNotExistException("Username : " + authRequest.getUsername() + ", is not found"));
-            } else
-                throw new BadCredentialsException("Invalid Credentials");
-        } catch (AuthenticationException e) {
-            throw new BadCredentialsException("Invalid Credentials", e);
-        }
-    }
+					return    ResponseEntity.status(HttpStatus.OK)
+							.headers(httpHeaders)
+							.body(new ResponseStructure<AuthResponse>()
+									.setStatus(HttpStatus.OK.value())
+									.setMessage("User Verified")
+									.setData(AuthResponse.builder()
+											.userId(existUser.getUserId())
+											.username(existUser.getUsername())
+											.accessExpiration(accessExpirySeconds)
+											.refreshExpiration(refreshExpirySeconds)
+											.build()));
+				}).orElseThrow(() -> new UserNotExistException("Username : " + authRequest.getUsername() + ", is not found"));
+			} else
+				throw new BadCredentialsException("Invalid Credentials");
+		} catch (AuthenticationException e) {
+			throw new BadCredentialsException("Invalid Credentials", e);
+		}
+	}
 
-    public void grantAccessToken(HttpHeaders httpHeaders, User user) {
-        String token = jwtService.createJwtToken(user.getUsername(), user.getUserRole(), accessExpirySeconds); // 1 hour in ms
+	public void grantAccessToken(HttpHeaders httpHeaders, User user) {
+		String token = jwtService.createJwtToken(user.getUsername(), user.getRole().toString(), accessExpirySeconds); // 1 hour in ms
 
-        AccessToken accessToken = AccessToken.builder()
-                .accesstoken(token)
-                .expiration(LocalDateTime.now().plusSeconds(accessExpirySeconds)) //convert ms to sec
-                .user(user)
-                .build();
-        accessRepository.save(accessToken);
+		AccessToken accessToken = AccessToken.builder()
+				.accesstoken(token)
+				.expiration(LocalDateTime.now().plusSeconds(accessExpirySeconds)) //convert ms to sec
+				.user(user)
+				.build();
+		accessRepository.save(accessToken);
 
-        httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("ar", token, accessExpirySeconds / 1000));
-    }
+		httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("at", token, accessExpirySeconds / 1000));
+	}
 
-    public void grantRefreshToken(HttpHeaders httpHeaders, User user) {
+	public void grantRefreshToken(HttpHeaders httpHeaders, User user) {
 
-        String token = jwtService.createJwtToken(user.getUsername(), user.getUserRole(), refreshExpirySeconds);
+		String token = jwtService.createJwtToken(user.getUsername(), user.getRole().toString(), refreshExpirySeconds);
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .refreshtoken(token)
-                .expiration(LocalDateTime.now().plusSeconds(refreshExpirySeconds))
-                .user(user)
-                .build();
-        refreshRepo.save(refreshToken);
+		RefreshToken refreshToken = RefreshToken.builder()
+				.refreshtoken(token)
+				.expiration(LocalDateTime.now().plusSeconds(refreshExpirySeconds))
+				.user(user)
+				.build();
+		refreshRepo.save(refreshToken);
 
-        httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("rt", token, refreshExpirySeconds / 1000));
-    }
+		httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("rt", token, refreshExpirySeconds / 1000));
+	}
 
-    private String generateCookie(String name, String tokenValue, long maxAge) {
-        return ResponseCookie.from(name, tokenValue)
-                .domain(domain)
-                .path("/")
-                .maxAge(maxAge)
-                .sameSite(samesite)
-                .httpOnly(true)
-                .secure(secure)
-                .build()
-                .toString();
-    }
+	private String generateCookie(String name, String tokenValue, long maxAge) {
+		return ResponseCookie.from(name, tokenValue)
+				.domain(domain)
+				.path("/")
+				.maxAge(maxAge)
+				.sameSite(samesite)
+				.httpOnly(true)
+				.secure(secure)
+				.build()
+				.toString();
+	}
+
+
+	@Override
+	public ResponseEntity<ResponseStructure<AuthResponse>> refreshLogin(String refreshToken, String accessToken) {
+		System.out.println("====================================");
+		System.out.println(refreshToken);
+		System.out.println(accessToken);
+
+		return null;
+
+	}
+
+
+
+
+
+
 }
 
 

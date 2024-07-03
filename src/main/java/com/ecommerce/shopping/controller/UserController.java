@@ -26,29 +26,17 @@ public class UserController {
     
 	
     private final UserService userService;
-
-    
-    @PostMapping("/login")
-	public ResponseEntity<ResponseStructure<AuthResponse>> login(@RequestBody AuthRequest authRequest)
-	{
-		return userService.login(authRequest);
-	}
-    
-    @GetMapping("/test")
-    public String test() {
-    	return "Success";
-    }
-    
+        
     @PostMapping("/sellers/registers")
-    public ResponseEntity<ResponseStructure<UserResponse>> saveUser(@RequestBody UserRequest userRequest,UserRole userRole) {
+    public ResponseEntity<ResponseStructure<UserResponse>> addSeller(@RequestBody UserRequest userRequest,UserRole userRole) {
         return userService.saveUser(userRequest, UserRole.SELLER);
     }
     
 
-//    @PostMapping("/customers/register")
-//    public ResponseEntity<ResponseStructure<UserResponse>> addCustomer(@Valid @RequestBody UserRequest userRequest) {
-//        return userService.addUser(userRequest, UserRole.CUSTOMER);
-//    }
+    @PostMapping("/customers/register")
+    public ResponseEntity<ResponseStructure<UserResponse>> addCustomer( @RequestBody UserRequest userRequest) {
+        return userService.saveUser(userRequest, UserRole.CUSTOMER);
+    }
      @PutMapping("/users/{userId}")
      public ResponseEntity<ResponseStructure<UserResponse>> updateUser(
             @Valid @RequestBody UserRequest userRequest,
@@ -70,6 +58,24 @@ public class UserController {
     public ResponseEntity<ResponseStructure<List<UserResponse>>> findUsers() {
         return userService.findUsers();
     }
+    
+    @PostMapping("/login")
+   	public ResponseEntity<ResponseStructure<AuthResponse>> login(@RequestBody AuthRequest authRequest,String accessToken,String refreshToken)
+   	{
+   		return userService.login(authRequest,accessToken,refreshToken);
+   	}
+       
+    @PostMapping("/refresh")
+    public ResponseEntity<ResponseStructure<AuthResponse>> refreshLogin(@CookieValue(name = "rt", required = false) String refreshToken,
+    																	@CookieValue(name = "at", required = false) String accessToken){
+    	return userService.refreshLogin(refreshToken,accessToken);
+    }
+       @GetMapping("/test")
+       public String test() {
+       	return "Success";
+       }
+    
+    
 
 
 }
