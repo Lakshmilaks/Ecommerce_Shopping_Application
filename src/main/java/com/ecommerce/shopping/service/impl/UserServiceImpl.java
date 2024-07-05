@@ -24,6 +24,7 @@ import com.ecommerce.shopping.requestdto.AuthRequest;
 import com.ecommerce.shopping.requestdto.OtpVerificationRequest;
 import com.ecommerce.shopping.requestdto.UserRequest;
 import com.ecommerce.shopping.responsedto.AuthResponse;
+import com.ecommerce.shopping.responsedto.LogoutResponse;
 import com.ecommerce.shopping.responsedto.UserResponse;
 import com.ecommerce.shopping.service.UserService;
 import com.ecommerce.shopping.user.mapper.UserMapper;
@@ -248,7 +249,7 @@ public class UserServiceImpl implements UserService {
 		String token = jwtService.createJwtToken(user.getUsername(), user.getRole().toString(), accessExpirySeconds*1000); // 1 hour in ms
 
 		AccessToken accessToken = AccessToken.builder()
-				.accesstoken(token)
+				.accessToken(token)
 				.expiration(LocalDateTime.now().plusSeconds(accessExpirySeconds*1000)) //convert ms to sec
 				.user(user)
 				.build();
@@ -318,43 +319,81 @@ public class UserServiceImpl implements UserService {
 	        }
   }
 
+	@Override
+	public ResponseEntity<LogoutResponse> logout(String refreshToken, String accessToken) {
 
-//	@Override
-//	public ResponseEntity<ResponseStructure<AuthResponse>> logout(String refreshToken,String accessToken) {
-		
-//		if (refreshToken == null || accessToken == null)
-//            throw new UserNotLoggedInException("Please login");
-//        else { 
-//            Optional<RefreshToken> optionalRefreshToken = refreshRepo.findByRefreshToken(refreshToken);
-//            Optional<AccessToken> optionalAccessToken = accessRepository.findByAccessToken(accessToken);
-//            RefreshToken existRefreshToken = optionalRefreshToken.get();
-//            AccessToken existAccessToken = optionalAccessToken.get();
-//
-//            existRefreshToken.setIsblocked(secure);
-//            existAccessToken.setIsblocked(secure);
-//            refreshRepo.save(existRefreshToken);
-//            accessRepository.save(existAccessToken);
-//
-//            HttpHeaders httpHeaders = new HttpHeaders();
-//            httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("rt", null, 0));
-//            httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("at", null, 0));
-//
-//            User user = existRefreshToken.getUser();
-//            return ResponseEntity.status(HttpStatus.OK)
-//                    .headers(httpHeaders)
-//                    .body(new ResponseStructure<AuthResponse>()
-//                            .setStatus(HttpStatus.OK.value())
-//                            .setMessage("Logout Done")
-//                            .setData(AuthResponse.builder()
-//                                    .userId(user.getUserId())
-//                                    .username(user.getUsername())
-//                                    .accessExpiration(0)
-//                                    .refreshExpiration(0)
-//                                    .build()));
-//        }
-//		return null;
-//	}
+		  Optional<RefreshToken> optionalRefreshToken = refreshRepo.findByRefreshToken(refreshToken);
+          Optional<AccessToken> optionalAccessToken = accessRepository.findByAccessToken(accessToken);
+          RefreshToken existRefreshToken = optionalRefreshToken.get();
+          AccessToken existAccessToken = optionalAccessToken.get();
 
+          existRefreshToken.setBlocked(true);
+          existAccessToken.setBlocked(true);
+          refreshRepo.save(existRefreshToken);
+          accessRepository.save(existAccessToken);
+
+          HttpHeaders httpHeaders = new HttpHeaders();
+          httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("rt", null, 0));
+          httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("at", null, 0));
+
+          return ResponseEntity.status(HttpStatus.OK)
+                  .headers(httpHeaders)
+                  .body(LogoutResponse.builder()
+                          .status(HttpStatus.OK.value())
+                          .message("User logout done")
+                          .build());
+	}
+
+
+	@Override
+	public ResponseEntity<LogoutResponse> logoutFromOtherDevices(String refreshToken, String accessToken) {
+		  String username = jwtService.extractUserName(refreshToken);
+          User user = userRepository.findByUsername(username).get();
+
+          List<RefreshToken> listRT = refreshRepo.findByUserAndIsBlockedAndRefreshTokenNot(user, false, refreshToken);
+          List<AccessToken> listAT = accessRepository.findByUserAndIsBlockedAndAccessTokenNot(user, false, accessToken);
+          listRT.forEach(rt->{
+              rt.setBlocked(true);
+              refreshRepo.save(rt);
+          });
+          listAT.forEach(at->{
+              at.setBlocked(true);
+              accessRepository.save(at);
+          });
+          return ResponseEntity.status(HttpStatus.OK).body(LogoutResponse.builder()
+                  .status(HttpStatus.OK.value())
+                  .message("Other Devices Logout done")
+                  .build());
+          }
+
+
+	@Override
+	public ResponseEntity<LogoutResponse> logoutFromAllDevices(String refreshToken, String accessToken) {
+		 String username = jwtService.extractUserName(refreshToken);
+         User user = userRepository.findByUsername(username).get();
+
+          List<RefreshToken> listRT = refreshRepo.findByUserAndIsBlocked(user, false);
+          List<AccessToken> listAT = accessRepository.findByUserAndIsBlocked(user, false);
+          listRT.forEach(rt->{
+              rt.setBlocked(true);
+              refreshRepo.save(rt);
+          });
+          listAT.forEach(at->{
+              at.setBlocked(true);
+              accessRepository.save(at);
+          });
+
+          HttpHeaders httpHeaders = new HttpHeaders();
+          httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("rt", null, 0));
+          httpHeaders.add(HttpHeaders.SET_COOKIE, generateCookie("at", null, 0));
+
+          return ResponseEntity.status(HttpStatus.OK)
+                  .headers(httpHeaders)
+                  .body(LogoutResponse.builder()
+                          .status(HttpStatus.OK.value())
+                          .message("Logout successfully done from all devices")
+                          .build());
+	}
 
 	
 }

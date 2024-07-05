@@ -5,6 +5,7 @@ import com.ecommerce.shopping.requestdto.AuthRequest;
 import com.ecommerce.shopping.requestdto.OtpVerificationRequest;
 import com.ecommerce.shopping.requestdto.UserRequest;
 import com.ecommerce.shopping.responsedto.AuthResponse;
+import com.ecommerce.shopping.responsedto.LogoutResponse;
 import com.ecommerce.shopping.responsedto.AuthResponse;
 import com.ecommerce.shopping.responsedto.UserResponse;
 import com.ecommerce.shopping.service.UserService;
@@ -67,10 +68,30 @@ public class UserController {
 	}
 
 	@PostMapping("/refresh")
-	 @PreAuthorize("hasAuthority('CUSTOMER') OR hasAuthority('SELLER')")
+	@PreAuthorize("hasAuthority('CUSTOMER') OR hasAuthority('SELLER')")
 	public ResponseEntity<ResponseStructure<AuthResponse>> refreshLogin(
 			@CookieValue(name = "rt", required = false) String refreshToken) {
 		return userService.refreshLogin(refreshToken);
 	}
 
+	@PostMapping("/logout")
+	@PreAuthorize("hasAuthority('CUSTOMER') OR hasAuthority('SELLER')")
+	public ResponseEntity<LogoutResponse> logout(@CookieValue(value="rt", required = false) String refreshToken,
+			@CookieValue(value="at", required = false) String accessToken){
+		return userService.logout(refreshToken, accessToken);
+	}
+
+	 @PostMapping("/logoutFromOtherDevices")
+	    @PreAuthorize("hasAuthority('CUSTOMER') OR hasAuthority('SELLER')")
+	    public ResponseEntity<LogoutResponse> logoutFromOtherDevices(@CookieValue(value = "rt", required = false) String refreshToken,
+	                                                                            @CookieValue(value = "at", required = false) String accessToken) {
+	        return userService.logoutFromOtherDevices(refreshToken, accessToken);
+	    }
+
+	    @PostMapping("/logoutFromAllDevices")
+	    @PreAuthorize("hasAuthority('CUSTOMER') OR hasAuthority('SELLER')")
+	    public ResponseEntity<LogoutResponse> logoutFromAllDevices(@CookieValue(value = "rt", required = false) String refreshToken,
+	                                                                                @CookieValue(value = "at", required = false) String accessToken) {
+	        return userService.logoutFromAllDevices(refreshToken, accessToken);
+	    }
 }

@@ -27,7 +27,7 @@ public class RefreshToken {
 	private int refreshtokenId;
 	private String refreshToken;
 	private LocalDateTime expiration;
-	private boolean isblocked;
+	private boolean isBlocked;
 
 	@ManyToOne
 	private User user;

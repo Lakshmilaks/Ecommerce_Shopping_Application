@@ -46,7 +46,7 @@ public class RefreshFilter extends OncePerRequestFilter{
 	                    "Refresh Token is not available");
 	        }
 	        Optional<RefreshToken> refreshToken = refreshRepo.findByRefreshToken(rt);
-	        if (refreshToken.isPresent() && !refreshToken.get().isIsblocked()) {
+	        if (refreshToken.isPresent() && !refreshToken.get().isBlocked()) {
 	            String username = jwtService.extractUserName(rt);
 	            String userRole = jwtService.extractUserRole(rt);
 

@@ -26,9 +26,9 @@ public class AccessToken {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private int accesstokenId;
-	private String accesstoken;
+	private String accessToken;
 	private LocalDateTime expiration;
-	private boolean isblocked;
+	private boolean isBlocked;
 
 
 	@ManyToOne
