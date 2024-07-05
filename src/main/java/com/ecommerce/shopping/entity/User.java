@@ -19,9 +19,8 @@ public class User {
     private String email;
     private String password;
     @Enumerated(EnumType.STRING)
-    private UserRole userRole;
+    private UserRole role;
     private boolean isEmailVerified;
     private boolean isDeleted;
-    private UserRole role;
     
 }

@@ -4,8 +4,12 @@ import com.ecommerce.shopping.exception.InvalidJWTException;
 import com.ecommerce.shopping.exception.InvalidOtpException;
 import com.ecommerce.shopping.exception.JwtExpiredExcepton;
 import com.ecommerce.shopping.exception.OtpExpiredException;
+import com.ecommerce.shopping.exception.TokenExpiredException;
+import com.ecommerce.shopping.exception.TokenExpiredException;
 import com.ecommerce.shopping.exception.UserAlreadyExistException;
 import com.ecommerce.shopping.exception.UserNotExistException;
+import com.ecommerce.shopping.exception.UserNotLoggedInException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -26,6 +30,16 @@ public class ApplicationExceptionHandler {
                 .setMessage(errorMessage).setRootCause(rootCause));
     }
 
+    @ExceptionHandler
+    public ResponseEntity<ErrorStructure<String>> handleTokenExpiredException(TokenExpiredException ex) {
+        return errorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), "refresh token expired");
+    }
+    
+    @ExceptionHandler
+    public ResponseEntity<ErrorStructure<String>> handleUserNotLoggedInException(UserNotLoggedInException ex) {
+        return errorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), "failed refresh");
+    }
+    
     @ExceptionHandler
     public ResponseEntity<ErrorStructure<String>> handleInvalidToken(InvalidJWTException ex) {
         return errorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), "Invalid Token");

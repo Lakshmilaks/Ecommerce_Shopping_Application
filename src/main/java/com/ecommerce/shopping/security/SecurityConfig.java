@@ -2,22 +2,24 @@ package com.ecommerce.shopping.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import com.ecommerce.shopping.jwt.JwtService;
+import com.ecommerce.shopping.repository.AccessRepository;
+import com.ecommerce.shopping.repository.RefreshRepo;
 import com.ecommerce.shopping.security.filter.JwtAuthFilter;
+import com.ecommerce.shopping.security.filter.LoginFilter;
+import com.ecommerce.shopping.security.filter.RefreshFilter;
 
 import lombok.AllArgsConstructor;
 
@@ -27,8 +29,9 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class SecurityConfig {
 	
-	private JwtAuthFilter authFilter;
 	private final JwtService jwtService;
+	private final RefreshRepo refreshRepo;
+	private final AccessRepository accessRepository;
 
 	@Bean
 	PasswordEncoder passwordEncoder() {
@@ -36,14 +39,44 @@ public class SecurityConfig {
 	}
 	
 	@Bean
+	@Order(3)
 	SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
 		return httpSecurity.csrf(csrf->csrf.disable())
-				.authorizeHttpRequests(authorize-> authorize.anyRequest().permitAll())
+				.securityMatchers(matcher -> matcher.requestMatchers("/api/v1/**"))
+				.authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
 				.sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.addFilterBefore(new JwtAuthFilter(jwtService),UsernamePasswordAuthenticationFilter.class)
-		
+				.addFilterBefore(new JwtAuthFilter(jwtService,refreshRepo,accessRepository),UsernamePasswordAuthenticationFilter.class)
 				.build();
 	}
+	
+	@Bean
+	@Order(2)
+	SecurityFilterChain refreshFilterChain(HttpSecurity httpSecurity) throws Exception {
+		return httpSecurity.csrf(csrf->csrf.disable())
+				.securityMatchers(matcher -> matcher.requestMatchers("/api/v1/refresh/**"))
+				.authorizeHttpRequests(authorize-> authorize.anyRequest().permitAll())
+				.sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.addFilterBefore(new RefreshFilter(jwtService, refreshRepo),UsernamePasswordAuthenticationFilter.class)
+				.build();
+	}
+	
+	@Bean
+	@Order(1)
+	SecurityFilterChain loginFilterChain(HttpSecurity httpSecurity) throws Exception {
+		return httpSecurity.csrf(csrf->csrf.disable())
+				 .securityMatchers(match -> match.requestMatchers("/api/v1/login/**",
+	                        "api/v1/users/otpVerification/**",
+	                        "api/v1/sellers/register/**",
+	                        "api/v1/customers/register/**"))
+				.authorizeHttpRequests(authorize-> authorize.anyRequest().permitAll())
+				.sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.addFilterBefore(new LoginFilter(),UsernamePasswordAuthenticationFilter.class)
+				.build();
+	}
+	
+	
+	
+	
 	@Bean
 	AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception
 	{
