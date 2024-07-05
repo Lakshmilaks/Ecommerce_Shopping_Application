@@ -28,6 +28,8 @@ public class AccessToken {
 	private int accesstokenId;
 	private String accesstoken;
 	private LocalDateTime expiration;
+	private boolean isblocked;
+
 
 	@ManyToOne
 	private User user;

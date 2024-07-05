@@ -23,11 +23,9 @@ public interface UserService {
 
 	ResponseEntity<ResponseStructure<UserResponse>> saveUser(UserRequest userRequest, UserRole seller);
 
-	ResponseEntity<ResponseStructure<AuthResponse>> login(AuthRequest authRequest, String accessToken, String refreshToken);
+	ResponseEntity<ResponseStructure<AuthResponse>> refreshLogin(String refreshToken);
 
-	ResponseEntity<ResponseStructure<AuthResponse>> refreshLogin(String refreshToken, String accessToken);
-
-//	ResponseEntity<ResponseStructure<AuthResponse>> refreshLogin(String refreshToken);
+	ResponseEntity<ResponseStructure<AuthResponse>> login(AuthRequest authRequest);
 
 
 }

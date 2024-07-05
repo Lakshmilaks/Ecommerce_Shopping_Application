@@ -60,7 +60,13 @@ public class JwtService {
 
 	public String extractUserRole(String token)
 	{
-		return parseJwt(token).get("userRole", String.class);
+		Claims claims = parseJwt(token);
+        if (claims == null) {
+            return null;
+        }
+        String userRole = claims.get("role", String.class);
+        return userRole;
+//		return parseJwt(token).get("role", String.class);
 	}
 
 	
